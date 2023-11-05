@@ -1,8 +1,7 @@
 import math
 import os
+
 import pygame
-from constants import *
-from pygame.locals import *
 
 
 class GUI:
