@@ -6,6 +6,7 @@ UNEXPLORED = 9
 FLAG = 10
 MINE = 11
 MINE_HIT = 12
+NO_MINE = 13
 
 # pygame mouse buttons
 LEFT = 1

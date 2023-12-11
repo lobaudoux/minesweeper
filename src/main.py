@@ -26,6 +26,14 @@ class Minesweeper:
         self.status = PLAYING
         self.agent = agent.Agent(self)
 
+    def get_adjacent_cells(self, x, y):
+        adjacent_cells = []
+        for dx, dy in DIRECTIONS:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.size_x and 0 <= ny < self.size_y:
+                adjacent_cells.append((nx, ny))
+        return adjacent_cells
+
     def generate_mines(self, x, y):
         print(f"Random state is {random.getstate()}")
         if self.n_mines > self.size_x * self.size_y / 2:
@@ -36,42 +44,39 @@ class Minesweeper:
             candidates.remove((x, y))
             n_removed = 1
             if self.size_x * self.size_y - self.n_mines >= 9:
-                for dx, dy in DIRECTIONS:
-                    if 0 <= x + dx < self.size_x and 0 <= y + dy < self.size_y:
-                        self.mines_board[x + dx][y + dy] = 0
-                        no_mines.append((x + dx, y + dy))
-                        candidates.remove((x + dx, y + dy))
-                        n_removed += 1
+                for ax, ay in self.get_adjacent_cells(x, y):
+                    self.mines_board[ax][ay] = 0
+                    no_mines.append((ax, ay))
+                    candidates.remove((ax, ay))
+                    n_removed += 1
             for nx, ny in random.sample(candidates, self.size_x * self.size_y - self.n_mines - n_removed):
                 self.mines_board[nx][ny] = 0
                 no_mines.append((nx, ny))
             for nx, ny in no_mines:
-                for dx, dy in DIRECTIONS:
-                    if 0 <= nx + dx < self.size_x and 0 <= ny + dy < self.size_y and self.mines_board[nx + dx][ny + dy] == MINE:
+                for ax, ay in self.get_adjacent_cells(nx, ny):
+                    if self.mines_board[ax][ay] == MINE:
                         self.mines_board[nx][ny] += 1
         else:
             mines = []
             candidates = [(i, j) for i in range(self.size_x) for j in range(self.size_y)]
             candidates.remove((x, y))
             if self.size_x * self.size_y - self.n_mines >= 9:
-                for dx, dy in DIRECTIONS:
-                    if 0 <= x + dx < self.size_x and 0 <= y + dy < self.size_y:
-                        candidates.remove((x + dx, y + dy))
+                for ax, ay in self.get_adjacent_cells(x, y):
+                    candidates.remove((ax, ay))
             for mx, my in random.sample(candidates, self.n_mines):
                 self.mines_board[mx][my] = MINE
                 mines.append((mx, my))
             for mx, my in mines:
-                for dx, dy in DIRECTIONS:
-                    if 0 <= mx + dx < self.size_x and 0 <= my + dy < self.size_y and self.mines_board[mx + dx][my + dy] != MINE:
-                        self.mines_board[mx + dx][my + dy] += 1
+                for ax, ay in self.get_adjacent_cells(mx, my):
+                    if self.mines_board[ax][ay] != MINE:
+                        self.mines_board[ax][ay] += 1
 
     def flag(self, x, y):
         self.updated_cells.append((x, y))
         if self.board[x][y] == UNEXPLORED:
             self.board[x][y] = FLAG
-            for dx, dy in DIRECTIONS:
-                if 0 <= x + dx < self.size_x and 0 <= y + dy < self.size_y:
-                    self.agent.add_watched(x + dx, y + dy)
+            for ax, ay in self.get_adjacent_cells(x, y):
+                self.agent.add_watched(ax, ay)
         elif self.board[x][y] == FLAG:
             self.board[x][y] = UNEXPLORED
 
@@ -80,21 +85,19 @@ class Minesweeper:
         self.n_revealed += 1
         self.agent.add_watched(x, y)
         self.updated_cells.append((x, y))
-        for dx, dy in DIRECTIONS:
-            if 0 <= x + dx < self.size_x and 0 <= y + dy < self.size_y:
-                self.agent.add_watched(x + dx, y + dy)
+        for ax, ay in self.get_adjacent_cells(x, y):
+            self.agent.add_watched(ax, ay)
 
     def reveal_neighbors(self, x, y):
         stack = [(x, y)]
         self.reveal(x, y)
         while stack:
             x, y = stack.pop()
-            for dx, dy in DIRECTIONS:
-                if 0 <= x + dx < self.size_x and 0 <= y + dy < self.size_y:
-                    if self.board[x + dx][y + dy] == UNEXPLORED:
-                        if self.mines_board[x + dx][y + dy] == 0:
-                            stack.append((x + dx, y + dy))
-                        self.reveal(x + dx, y + dy)
+            for ax, ay in self.get_adjacent_cells(x, y):
+                if self.board[ax][ay] == UNEXPLORED:
+                    if self.mines_board[ax][ay] == 0:
+                        stack.append((ax, ay))
+                    self.reveal(ax, ay)
 
     def left_click_at(self, x, y):
         if self.status == PLAYING and self.board[x][y] == UNEXPLORED:
@@ -164,7 +167,7 @@ def main():
                 if event.key == pygame.locals.K_SPACE:
                     solver = not solver
         if solver and minesweeper.status == PLAYING:
-            move = minesweeper.agent.get_move()
+            move = minesweeper.agent.get_cells_to_open()
             for x, y in move:
                 minesweeper.left_click_at(x, y)
         if minesweeper.status == PLAYING and minesweeper.n_revealed == minesweeper.size_x * minesweeper.size_y - minesweeper.n_mines:
